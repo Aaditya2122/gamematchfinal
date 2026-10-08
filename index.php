@@ -1,0 +1,22 @@
+<?php
+$pageTitle='Home'; require_once 'config/bootstrap.php';
+$user=current_user($pdo); $playedIds=$user?played_game_ids($pdo,(int)$user['id']):[]; $personalRecommendations=$user?personalized_games($pdo,(int)$user['id'],6):[];
+$stmt=$pdo->query("SELECT g.*, COALESCE(AVG(r.rating),0) avg_rating, COUNT(r.id) local_count FROM games g LEFT JOIN ratings r ON r.game_id=g.id GROUP BY g.id ORDER BY g.featured DESC, g.store_rating DESC, g.title LIMIT 12");
+$featured=$stmt->fetchAll();
+require 'partials/header.php';
+?>
+<section class="hero"><div class="hero-copy"><span class="eyebrow">🎮 Discover • Compare • Play</span><h1>Find a game that <span>actually fits you.</span></h1><p>GameMatch combines platforms, genres, gameplay style, store offers, ratings and recommendations in one gaming discovery hub.</p><div class="hero-actions"><a class="btn" href="recommend.php">Find My Game</a><a class="btn btn-ghost" href="games.php">Explore 50+ Games</a></div></div><div class="hero-card"><div class="hero-logo"><img src="images/gamematch-logo.png" alt="GameMatch"></div><div class="mini-card"><span>PRICE COMPARISON</span><strong>Best deal</strong><small>Compare Steam • Epic • PlayStation • Xbox</small></div><div class="mini-card second"><span>SMART MATCH</span><strong>94%</strong><small>Genre • platform • mode • budget</small></div></div></section>
+<section class="quick-stats"></section>
+<?php if($user && $personalRecommendations): ?>
+<section class="personal-section">
+<div class="section-head"><div><p class="eyebrow">Your GameMatch profile</p><h2>Recommended for you</h2><p class="section-note">Based on the games in your wishlist and the games you've marked as played.</p></div><a class="text-link" href="recommend.php">More recommendations →</a></div>
+<div class="game-grid">
+<?php foreach($personalRecommendations as $game): $offer=best_offer($pdo,(int)$game['id']); ?>
+<article class="game-card"><a href="game-details.php?id=<?=(int)$game['id']?>"><img src="<?=e($game['cover_image'])?>" data-fallback="<?=e(site_url('images/game-placeholder.svg'))?>" alt="<?=e($game['title'])?>" loading="lazy"></a><div class="game-card-body"><div class="card-top"><span class="badge"><?=e(first_tag($game['platforms'],'—'))?></span><span class="rating">⭐ <?= $game['store_rating'] ? number_format((float)$game['store_rating'],1) : '—' ?></span></div><h3><a href="game-details.php?id=<?=(int)$game['id']?>"><?=e($game['title'])?></a></h3><p><?=e($game['personal_reason'])?></p><div class="card-bottom"><strong><?=$offer?money((float)$offer['price']):'Price unavailable'?></strong><a href="game-details.php?id=<?=(int)$game['id']?>">Details →</a></div><form method="post" action="<?=e(site_url('played-toggle.php'))?>" class="played-form"><input type="hidden" name="csrf_token" value="<?=e(csrf_token())?>"><input type="hidden" name="game_id" value="<?=(int)$game['id']?>"><input type="hidden" name="redirect_to" value="index.php"><button class="played-button" type="submit">Mark as Played</button></form></div></article>
+<?php endforeach; ?>
+</div></section>
+<?php endif; ?>
+<section class="section-head"><div><p class="eyebrow">Popular picks</p><h2>Featured games</h2></div><a class="text-link" href="games.php">View all →</a></section>
+<div class="game-grid"><?php foreach($featured as $game): $offer=best_offer($pdo,(int)$game['id']); ?><article class="game-card"><a href="game-details.php?id=<?=(int)$game['id']?>"><img src="<?=e($game['cover_image'])?>" data-fallback="<?=e(site_url('images/game-placeholder.svg'))?>" alt="<?=e($game['title'])?>" loading="lazy"></a><div class="game-card-body"><div class="card-top"><span class="badge"><?=e(first_tag($game['platforms'],'—'))?></span><span class="rating">⭐ <?= $game['store_rating'] ? number_format((float)$game['store_rating'],1) : '—' ?></span></div><h3><a href="game-details.php?id=<?=(int)$game['id']?>"><?=e($game['title'])?></a></h3><p><?=e($game['genres'])?></p><div class="card-bottom"><strong><?= $offer ? money((float)$offer['price']) : ((isset($game['price']) && is_numeric($game['price']) && (float)$game['price']>0) ? money((float)$game['price']) : 'Price unavailable') ?></strong><a href="game-details.php?id=<?=(int)$game['id']?>">Compare →</a></div></div></article><?php endforeach; ?></div>
+<section class="cta-strip"><div><p class="eyebrow">Not sure what to play?</p><h2>Let GameMatch calculate your best matches.</h2></div><a class="btn" href="recommend.php">Get Recommendations</a></section>
+<?php require 'partials/footer.php'; ?>
